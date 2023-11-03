@@ -1,5 +1,4 @@
 use cli_prompts_rs::{CliPrompt, LogType, PromptSelectOption};
-use std::process::exit;
 
 use crate::macros_calculator::{
     caloric_intake, caloric_treshold, macro_split, Activity, Diet, Gender, Goal, Person,
@@ -8,35 +7,6 @@ use crate::macros_calculator::{
 pub mod macros_calculator;
 
 fn main() {
-    let luca = Person::new(
-        String::from("Luca"),
-        33,
-        Gender::Male,
-        173,
-        70,
-        Activity::SuperActive,
-    );
-
-    println!("{}", luca);
-
-    let caloric_treshold = caloric_treshold(luca);
-
-    println!("Luca's caloric treshold is {}", caloric_treshold);
-
-    let goal = Goal::WeightLoss;
-
-    println!(
-        "Luca's caloric intake should be {} for {}",
-        caloric_intake(caloric_treshold, &goal),
-        goal
-    );
-
-    let diet = Diet::LowCarb;
-    let (carbs, protein, fat) =
-        macro_split(caloric_intake(caloric_treshold, &goal), &diet).to_grams();
-
-    println!("Considering a {} diet, the macros should be distributed as follows: carbs {}g, protein {}g, fat {}g", &diet, carbs, protein, fat);
-
     let mut cli_prompt = CliPrompt::new();
     cli_prompt.intro("This is a basic CLI tool").unwrap();
 
@@ -56,44 +26,77 @@ fn main() {
         .log(&format!("You are {} years old", &age), LogType::Info)
         .unwrap();
 
-    cli_prompt
-        .log(&format!("Adulthood: {}", is_adult(age)), LogType::Info)
-        .unwrap();
-
-    let answer = cli_prompt
-        .prompt_confirm("Is the information filled correct?")
-        .unwrap();
-
-    if !answer {
-        cli_prompt.cancel("Operation cancelled").unwrap();
-        exit(0);
-    }
-
-    let options = vec![
-        PromptSelectOption::new("option1", "Sedentary"),
-        PromptSelectOption::new("option2", "Lightly Active"),
-        PromptSelectOption::new("option3", "Moderately Active"),
-        PromptSelectOption::new("option4", "Super Active"),
-        PromptSelectOption::new("option5", "Very Active"),
+    let gender_options = vec![
+        PromptSelectOption::new("option1", "Male"),
+        PromptSelectOption::new("option2", "Female"),
     ];
 
-    let selected_option = cli_prompt
-        .prompt_select("How active are you?", options)
+    let gender_selected = cli_prompt
+        .prompt_select("What is your gender?", gender_options)
         .unwrap();
 
-    cli_prompt
-        .log(&format!("{}", selected_option), LogType::Info)
+    // using as_str to get a &str to compare with instead of String
+    // catch all, because as_str may not return Male or Female
+    let gender = match gender_selected.label.as_str() {
+        "Male" => Gender::Male,
+        _ => Gender::Female,
+    };
+
+    let height: u8 = cli_prompt
+        .prompt_text("What is your height?")
+        .unwrap()
+        .parse()
         .unwrap();
+
+    let weight: u8 = cli_prompt
+        .prompt_text("What is your weight?")
+        .unwrap()
+        .parse()
+        .unwrap();
+
+    let activity_options = vec![
+        PromptSelectOption::new("option11", "Sedentary"),
+        PromptSelectOption::new("option12", "Lightly Active"),
+        PromptSelectOption::new("option13", "Moderately Active"),
+        PromptSelectOption::new("option14", "Super Active"),
+        PromptSelectOption::new("option15", "Very Active"),
+    ];
+
+    let activity_selected: PromptSelectOption = cli_prompt
+        .prompt_select("How active are you?", activity_options)
+        .unwrap();
+
+    let activity_level = match activity_selected.label.as_str() {
+        "Sedentary" => Activity::Sedentary,
+        "Lightly Active" => Activity::LightlyActive,
+        "Moderately Active" => Activity::ModeratelyActive,
+        "Super Active" => Activity::SuperActive,
+        _ => Activity::VeryActive,
+    };
+
+    let luca = Person::new(name, age, gender, height, weight, activity_level);
+
+    let caloric_treshold = caloric_treshold(luca);
+
+    println!("Luca's caloric treshold is {}", caloric_treshold);
+
+    let goal = Goal::WeightLoss;
+
+    println!(
+        "Luca's caloric intake should be {} for {}",
+        caloric_intake(caloric_treshold, &goal),
+        goal
+    );
+
+    let diet = Diet::LowCarb;
+    let (carbs, protein, fat) =
+        macro_split(caloric_intake(caloric_treshold, &goal), &diet).to_grams();
+
+    cli_prompt
+        .log(&format!("Considering a {} diet, the macros should be distributed as follows: carbs {}g, protein {}g, fat {}g", &diet, carbs, protein, fat), LogType::Info)
+        .unwrap();
+
     cli_prompt
         .outro("Thanks for using our application. Bye 👋")
         .unwrap();
-}
-
-fn is_adult(age: u8) -> bool {
-    const THRESHOLD_FOR_MAJORITY: u8 = 18;
-
-    if age >= THRESHOLD_FOR_MAJORITY {
-        return true;
-    }
-    return false;
 }
